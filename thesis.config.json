@@ -1,0 +1,26 @@
+{
+  "thesis_title": "التفسير الطبيعي في الخطاب العلمي المرئي العربي بين الحضور والتوظيف في قضايا أصل الإنسان — دراسة تحليلية نقدية",
+  "master_docx": "outputs/docx/الرسالة_الكاملة.docx",
+  "chapters_glob": "chapters/**/*.md",
+  "chapter_order": [
+    "chapters/00_preliminary/*.md",
+    "chapters/chapter01/*.md",
+    "chapters/chapter02/*.md",
+    "chapters/chapter03/*.md",
+    "chapters/99_appendix/*.md"
+  ],
+  "font": { "arabic": "Traditional Arabic", "size_pt": 16 },
+  "line_spacing": 1.5,
+  "first_line_indent_cm": 1.25,
+  "margins_cm": { "top": 2.5, "bottom": 2.5, "left": 2.5, "right": 3.0 },
+  "footnote_mark_format": "({n})",
+  "metadata": { "author": "", "title": "", "subject": "" },
+  "library_root": "C:/Users/H/OneDrive/Desktop/مراجع الرسالة",
+  "clips_root": "C:/Users/H/OneDrive/Desktop/مقاطع الرسالة",
+  "transcripts_glob": "chapters/chapter02/transcripts/**/*.srt",
+  "guards": {
+    "min_paragraph_length_cv": 0.30,
+    "max_similar_consecutive_paragraphs": 2,
+    "similar_tolerance": 0.12
+  }
+}

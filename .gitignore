@@ -1,0 +1,5 @@
+outputs/docx/*.docx
+state/last_build_report.json
+state/ocr_log.txt
+__pycache__/
+*.pyc
