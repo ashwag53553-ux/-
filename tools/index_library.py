@@ -20,6 +20,9 @@ import json
 import sys
 from pathlib import Path
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "source_registry" / "registry.tsv"
 OCR_QUEUE = ROOT / "source_registry" / "ocr_queue.txt"

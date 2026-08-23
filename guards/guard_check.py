@@ -29,6 +29,9 @@ import statistics
 import sys
 from pathlib import Path
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parents[1]
 
 HIDDEN_RE = re.compile("[\u200b\u200c\u200d\u2060\ufeff\u00ad\u180e\u200e\u200f\u061c\u202a-\u202e\u2066-\u2069\u034f\u2028\u2029\ufe00-\ufe0f\U000e0000-\U000e007f]")
@@ -56,13 +59,17 @@ MACHINE_PHRASES = [
 # ح٥: كل ما يدلّ على مقطع/حلقة — ممنوع داخل الهوامش
 CLIP_MARKERS = [
     "الحلقة", "حلقة", "المقطع", "مقطع", "يوتيوب", "youtube", "youtu.be",
-    "قناة", "بودكاست", "الدقيقة", "د:", "ت:",
+    "قناة", "بودكاست", "الدقيقة",
 ]
 TIMESTAMP_RE = re.compile(r"\d{1,2}:\d{2}(:\d{2})?|[٠-٩]{1,2}:[٠-٩]{2}")
 
 # ح٦: بيانات الإحالة المكتملة
 PAGE_RE = re.compile(r"\bص\s*[٠-٩0-9]|\bص\.?\s*[٠-٩0-9]|ج\s*[٠-٩0-9]")
 YEAR_RE = re.compile(r"[٠-٩0-9]{3,4}\s*(هـ|م)\b|[٠-٩0-9]{4}")
+# إحالات لا تُطلب فيها بيانات النشر: الآيات وتخريج الحديث
+QURAN_RE = re.compile(r"سورة|الآية|الآيات|\[[^\]]*:\s*[٠-٩0-9]+\s*\]")
+HADITH_RE = re.compile(r"أخرجه|رواه|صحيح البخاري|صحيح مسلم|سنن |مسند |المستدرك|"
+                       r"رقم الحديث|حديث رقم|برقم")
 
 
 class Report:
@@ -196,6 +203,8 @@ def check_file(path: Path, cfg: dict) -> Report:
     # ── ح٥ الهوامش للكتب فقط ────────────────────────────────
     rep.stats["footnotes"] = len(notes)
     for key, body_text in notes.items():
+        if QURAN_RE.search(body_text) or HADITH_RE.search(body_text):
+            continue                      # آية أو تخريج حديث: ليست إحالة مقطع
         low = body_text.lower()
         hit = [m for m in CLIP_MARKERS if m in low or m in body_text]
         if hit or TIMESTAMP_RE.search(body_text):
@@ -203,8 +212,12 @@ def check_file(path: Path, cfg: dict) -> Report:
                     f"({', '.join(hit) or 'توقيت زمني'}) — انقله إلى المتن مختصراً")
 
     # ── ح٦ اكتمال بيانات الإحالة ────────────────────────────
-    incomplete = [k for k, v in notes.items()
-                  if not PAGE_RE.search(v) or not YEAR_RE.search(v) or v.count("،") < 3]
+    def exempt(v: str) -> bool:
+        return bool(QURAN_RE.search(v) or HADITH_RE.search(v))
+
+    incomplete = [k for k, v in notes.items() if not exempt(v) and
+                  (not PAGE_RE.search(v) or not YEAR_RE.search(v) or v.count("،") < 3)]
+    rep.stats["exempt_citations"] = sum(1 for v in notes.values() if exempt(v))
     rep.stats["incomplete_citations"] = len(incomplete)
     if incomplete:
         rep.warn("ح٦ هوامش ناقصة البيانات (مؤلف/كتاب/طبعة/دار/سنة/صفحة): "
@@ -237,6 +250,8 @@ def main(argv=None):
     ap.add_argument("--config", default=str(ROOT / "thesis.config.json"))
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--warn-only", action="store_true", help="لا تُفشل البناء")
+    ap.add_argument("--all", action="store_true",
+                    help="افحص كل ملفات md بما فيها السجلات والخرائط")
     args = ap.parse_args(argv)
 
     cfg = {}
@@ -244,10 +259,29 @@ def main(argv=None):
     if cfgp.exists():
         cfg = json.loads(cfgp.read_text(encoding="utf-8-sig"))
 
-    paths = []
+    SKIP_DIRS = ("state", "project_brief", "prompts", "examples", ".claude",
+                 "source_registry", "evidence_bank", "outputs/docx")
+    SKIP_NAMES = ("README", "SNAPSHOT", "ledger", "defects", "EXCEPTIONS",
+                  ".template.", "_map", "map_", "log")
+
+    def is_draft(path: Path) -> bool:
+        rel = str(path).replace("\\", "/")
+        if any(f"/{d}/" in f"/{rel}" for d in SKIP_DIRS):
+            return False
+        if path.name.startswith("_") or any(k in path.name for k in SKIP_NAMES):
+            return False
+        return True
+
+    paths, skipped = [], []
     for pattern in args.files:
         hits = sorted(glob.glob(pattern, recursive=True))
-        paths.extend(Path(h) for h in hits if h.endswith(".md"))
+        for h in hits:
+            if not h.endswith(".md"):
+                continue
+            (paths if (args.all or is_draft(Path(h))) else skipped).append(Path(h))
+    if skipped:
+        print(f"  [i] تُخُطّي {len(skipped)} ملفاً ليس من مسودّات الرسالة "
+              f"(سجلات/خرائط/أمثلة). لفحصها أضف --all")
     if not paths:
         sys.exit("[!] لا ملفات md مطابقة")
 

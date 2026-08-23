@@ -27,6 +27,9 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parents[1]
 AR = str.maketrans("0123456789", "٠١٢٣٤٥٦٧٨٩")
 SKIP = ("EXCEPTIONS", ".template.", "README", "SNAPSHOT")
