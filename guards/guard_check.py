@@ -18,6 +18,9 @@
   ح٩  رتابة مطالع الفقرات (تكرار كلمة الافتتاح)       → رفض
   ح١٠ تساوي أطوال الجُمل داخل الفقرات                 → رفض
   ح١١ إفراط الروابط المنطقية المقولبة                 → رفض
+  ح١٢ رتابة الإيقاع محلياً (نافذة أربع فقرات)          → رفض
+  ح١٣ غياب الفقرة القصيرة الحاسمة أو المطوّلة          → رفض
+  ح١٤ تساوي بنية الفقرات (عدد الجُمل نفسه توالياً)      → رفض
 
 الاستعمال:
     python guards/guard_check.py chapters/chapter02/*.md
@@ -247,6 +250,64 @@ def check_file(path: Path, cfg: dict) -> Report:
         rep.err(f"ح٧ {len(marks_all) - len(marks_red)} موضعاً مشكوكاً فيه [[تحقق]] "
                 f"خارج «صفحة التحقّق الحمراء» — انقله إليها أو احذفه")
     rep.stats["has_red_page"] = bool(red_lines)
+
+    # ── ح١٢–ح١٤ إيقاع الفقرات (يُقاس محلياً لا على المتوسط) ──
+    plens = [len(p.split()) for p in paras if len(p.split()) >= 4]
+    if len(plens) >= 6:
+        med = statistics.median(plens)
+        short = [n for n in plens if n <= 0.60 * med]
+        long_ = [n for n in plens if n >= 1.50 * med]
+        rep.stats["median_paragraph"] = med
+        rep.stats["short_paragraphs"] = len(short)
+        rep.stats["long_paragraphs"] = len(long_)
+        rep.stats["length_span"] = round(max(plens) / max(1, min(plens)), 2)
+
+        # ح١٢: نافذة متحركة من أربع فقرات
+        win = gcfg.get("rhythm_window", 4)
+        floor_local = gcfg.get("min_local_cv", 0.22)
+        flat = []
+        for i in range(len(plens) - win + 1):
+            chunk = plens[i:i + win]
+            m = statistics.fmean(chunk)
+            cv_local = statistics.pstdev(chunk) / m if m else 0
+            if cv_local < floor_local:
+                flat.append((i + 1, cv_local, chunk))
+        if flat:
+            spots = "، ".join(f"الفقرات {i}-{i + win - 1} ({c:.2f})"
+                              for i, c, _ in flat[:4])
+            rep.err(f"ح١٢ إيقاع رتيب في {len(flat)} موضعاً: {spots} — "
+                    f"أدخل فقرة قصيرة حاسمة أو ادمج فقرتين")
+
+        # ح١٣: لا بدّ من قصيرة حاسمة ومطوّلة
+        need = max(1, int(len(plens) * gcfg.get("min_short_ratio", 0.15)))
+        if len(short) < need:
+            rep.err(f"ح١٣ الفقرات القصيرة {len(short)} والمطلوب {need} على الأقل "
+                    f"(أقصر من {int(0.6 * med)} كلمة) — النصّ يمشي بنفَس واحد")
+        if len(long_) < need:
+            rep.err(f"ح١٣ الفقرات المطوّلة {len(long_)} والمطلوب {need} على الأقل "
+                    f"(أطول من {int(1.5 * med)} كلمة) — لا تفاوت في التنفّس")
+        span_floor = gcfg.get("min_length_span", 2.2)
+        if rep.stats["length_span"] < span_floor:
+            rep.err(f"ح١٣ المدى بين أطول فقرة وأقصرها {rep.stats['length_span']} "
+                    f"والمطلوب {span_floor} فأكثر")
+
+        # ح١٤: بنية الفقرة — عدد الجُمل لا يتكرر ثلاثاً متوالية
+        counts = []
+        for p_text in paras:
+            if len(p_text.split()) >= 4:
+                counts.append(sum(1 for x in SENT_SPLIT_RE.split(p_text)
+                                  if len(x.split()) >= 4))
+        run, worst_i = 1, None
+        for i in range(1, len(counts)):
+            if counts[i] == counts[i - 1] and counts[i] >= 2:
+                run += 1
+                if run >= 3:
+                    worst_i = i - run + 2
+            else:
+                run = 1
+        if worst_i:
+            rep.err(f"ح١٤ ثلاث فقرات متتالية أو أكثر بعدد الجُمل نفسه "
+                    f"(ابتداءً من الفقرة {worst_i}) — نوّع بنية الفقرة لا طولها فقط")
 
     # ── ح٨ تشكيل زائد ───────────────────────────────────────
     plain = QURAN_BRACKETS_RE.sub("", "\n".join(
