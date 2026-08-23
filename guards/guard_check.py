@@ -14,6 +14,10 @@
   ح٣ب إفراط الشرطة الطويلة (بصمة أسلوب آلي)          → رفض
   ح٦  اكتمال بيانات الإحالة (ص/طبعة/دار/سنة)         → تحذير مُحصى
   ح٧  المشكوك فيه خارج الصفحة الحمراء                → خطأ
+  ح٨  تشكيل زائد عن حدّ رفع اللبس                    → رفض
+  ح٩  رتابة مطالع الفقرات (تكرار كلمة الافتتاح)       → رفض
+  ح١٠ تساوي أطوال الجُمل داخل الفقرات                 → رفض
+  ح١١ إفراط الروابط المنطقية المقولبة                 → رفض
 
 الاستعمال:
     python guards/guard_check.py chapters/chapter02/*.md
@@ -26,6 +30,7 @@ import glob
 import json
 import re
 import statistics
+from collections import Counter
 import sys
 from pathlib import Path
 
@@ -70,6 +75,16 @@ YEAR_RE = re.compile(r"[٠-٩0-9]{3,4}\s*(هـ|م)\b|[٠-٩0-9]{4}")
 QURAN_RE = re.compile(r"سورة|الآية|الآيات|\[[^\]]*:\s*[٠-٩0-9]+\s*\]")
 HADITH_RE = re.compile(r"أخرجه|رواه|صحيح البخاري|صحيح مسلم|سنن |مسند |المستدرك|"
                        r"رقم الحديث|حديث رقم|برقم")
+
+
+# ح٨: التشكيل — تُحصى الحركات عدا الشدّة (فالشدّة كثيراً ما ترفع اللبس)
+TASHKEEL_RE = re.compile(r"[\u064b-\u0650\u0652\u0670\u0640]")
+QURAN_BRACKETS_RE = re.compile(r"﴿[^﴾]*﴾")
+# ح١١: روابط مقولبة يُفرط فيها التوليد الآلي
+STOCK_CONNECTORS = ["وبالتالي", "ومن ثمّ", "ومن ثم", "وعليه فإن", "إضافة إلى ذلك",
+                    "علاوة على ذلك", "وفي هذا السياق", "وفي الوقت نفسه",
+                    "من ناحية أخرى", "وختاماً", "وفي المقابل"]
+SENT_SPLIT_RE = re.compile(r"[.؟!]|(?<=[^\d]):")
 
 
 class Report:
@@ -232,6 +247,53 @@ def check_file(path: Path, cfg: dict) -> Report:
         rep.err(f"ح٧ {len(marks_all) - len(marks_red)} موضعاً مشكوكاً فيه [[تحقق]] "
                 f"خارج «صفحة التحقّق الحمراء» — انقله إليها أو احذفه")
     rep.stats["has_red_page"] = bool(red_lines)
+
+    # ── ح٨ تشكيل زائد ───────────────────────────────────────
+    plain = QURAN_BRACKETS_RE.sub("", "\n".join(
+        l for l in body if not l.strip().startswith(">")))
+    letters = max(1, len(re.findall(r"[\u0621-\u064a]", plain)))
+    marks = len(TASHKEEL_RE.findall(plain))
+    rate_t = marks / letters * 1000
+    rep.stats["tashkeel_per_1000"] = round(rate_t, 1)
+    t_limit = gcfg.get("max_tashkeel_per_1000_letters", 15)
+    if marks > 20 and rate_t > t_limit:
+        rep.err(f"ح٨ تشكيل زائد: {marks} حركة ({rate_t:.0f} لكل ألف حرف، "
+                f"الحد {t_limit}) — اكتفِ بما لولاه لتغيّرت الكلمة. "
+                f"(الآيات بين ﴿﴾ والاقتباسات مستثناة)")
+
+    # ── ح٩ رتابة مطالع الفقرات ─────────────────────────────
+    openers = [p.split()[0].strip("،.") for p in paras if p.split()]
+    rep.stats["paragraph_openers"] = len(set(openers))
+    for word, count in Counter(openers).items():
+        if count >= 3 and len(word) > 2:
+            rep.err(f"ح٩ {count} فقرات تفتتح بـ«{word}» — نوّع المطالع، "
+                    f"فتكرار الافتتاح بصمة آلة")
+
+    # ── ح١٠ تساوي أطوال الجُمل ──────────────────────────────
+    sent_lens = []
+    for p_text in paras:
+        for sent in SENT_SPLIT_RE.split(p_text):
+            n_w = len(sent.split())
+            if n_w >= 4:
+                sent_lens.append(n_w)
+    if len(sent_lens) >= 8:
+        mean_s = statistics.fmean(sent_lens)
+        cv_s = statistics.pstdev(sent_lens) / mean_s if mean_s else 0
+        rep.stats["sentence_cv"] = round(cv_s, 3)
+        s_floor = gcfg.get("min_sentence_length_cv", 0.35)
+        if cv_s < s_floor:
+            rep.err(f"ح١٠ الجُمل متساوية الطول (معامل {cv_s:.2f} < {s_floor}) — "
+                    f"اكسر الإيقاع: جملة قصيرة حاسمة بين المطوّلات")
+
+    # ── ح١١ إفراط الروابط المقولبة ─────────────────────────
+    conn = [(c, text.count(c)) for c in STOCK_CONNECTORS if text.count(c)]
+    total_conn = sum(c for _, c in conn)
+    rep.stats["stock_connectors"] = total_conn
+    conn_limit = gcfg.get("max_stock_connectors_per_1000_words", 4)
+    if total_conn > 3 and total_conn / words_total * 1000 > conn_limit:
+        top = "، ".join(f"«{c}»×{n}" for c, n in sorted(conn, key=lambda x: -x[1])[:4])
+        rep.err(f"ح١١ إفراط في الروابط المقولبة ({total_conn}): {top} — "
+                f"اربط بالمعنى لا بالحشو")
 
     # ── إحصاء مساند: الحواشي المعرّفة مقابل المستدعاة ───────
     refs = set(FOOTNOTE_REF_RE.findall("\n".join(body)))

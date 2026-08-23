@@ -9,6 +9,7 @@
 `chapters/[chapterXX]/[NN_اسم_المطلب].md` — ولا تلمس أي ملف آخر.
 
 ## قبل الكتابة (إلزامي، وبهذا الترتيب)
+0. اقرأ `prompts/_STYLE_LAW.md` كاملاً — قانون الصياغة مقدَّم على كل ما بعده.
 1. اقرأ `outputs/matalib/00_preliminary_chapter_REVIEW_AUTHENTIC_RESEARCHER_VOICE.md`
    واستخرج منه: النبرة، طول الجملة، طريقة الانتقال، طريقة النقد. احتذِها.
 2. اقرأ `source_registry/registry.tsv` و`evidence_bank/quotes.tsv` **أولاً**:
