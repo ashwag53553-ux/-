@@ -11,15 +11,24 @@
 - لا تسأل أسئلة قبل إنجاز الجرد كاملاً. اسأل في آخر التقرير فقط، وبثلاثة أسئلة كحدّ أقصى.
 
 ## الخطوة ١ — تركيب المكينة
-انسخ إلى جذر مجلّد العمل الملفات الآتية من حزمة المكينة (المستودع
-`ashwag53553-ux/-`، الفرع `claude/thesis-architecture-setup-r90xlb`):
-`CLAUDE.md`، `thesis.config.json`، `tools/`، `guards/`، `source_registry/`،
-`evidence_bank/`، `state/`، `prompts/`، `.claude/skills/thesis-factory/`.
+حزمة المكينة مدفوعة إلى فرع `claude/thesis-architecture-setup-r90xlb` في المستودع
+`ashwag53553-ux/-`. نفّذ داخل مجلّد العمل:
+```bash
+git status                       # تأكّد أن العمل نظيف؛ إن لا، احفظه بـ git stash
+git fetch origin claude/thesis-architecture-setup-r90xlb
+git checkout -b machine origin/claude/thesis-architecture-setup-r90xlb -- 2>NUL || \
+  git merge --allow-unrelated-histories origin/claude/thesis-architecture-setup-r90xlb
+```
+إن تعارض الدمج: **أبقِ ملفات الرسالة كما هي** واقبل ملفات المكينة
+(`CLAUDE.md`، `thesis.config.json`، `tools/`، `guards/`، `source_registry/`،
+`evidence_bank/`، `state/`، `prompts/`، `.claude/skills/thesis-factory/`).
 ثم:
-1. إن وُجد `CLAUDE.md` سابق في المجلّد فلا تحذفه: احفظه باسم `CLAUDE.local.md`
-   وادمج ما فيه من قرارات خاصة داخل قسم «قرارات معتمدة» في الدستور الجديد.
-2. نفّذ: `pip install python-docx pypdf`
-3. نفّذ: `python tools/thesis.py status` وألصق مخرجه كما هو.
+1. إن وُجد `CLAUDE.md` سابق فيه قرارات خاصة: احفظه باسم `CLAUDE.local.md`
+   وادمج قراراته في قسم «قرارات معتمدة» من الدستور الجديد.
+2. اضبط في `thesis.config.json`: `library_root` و`clips_root` و`chapter_order`
+   لتطابق مسارات جهازي الحقيقية.
+3. نفّذ: `pip install python-docx pypdf`
+4. نفّذ: `python tools/thesis.py status` وألصق مخرجه كما هو.
 
 ## الخطوة ٢ — جرد آليّ (نفّذ الأوامر، لا تُقدّر)
 اجمع بالأرقام الحقيقية:
