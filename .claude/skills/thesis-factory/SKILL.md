@@ -14,6 +14,11 @@ description: مصنع رسالة الماجستير — استعمله في أي
 
 ## الخطوات الثابتة
 
+### ٠) أول خطوة في كل جلسة
+اقرأ `state/SNAPSHOT.md` (بطاقة المشروع) — فيها حال المشروع كله في صفحة واحدة.
+لا تفتح ملفاً إلا لِما لم تُجب عنه البطاقة. وأعِد بناءها بعد أي تعديل:
+`python tools/snapshot.py`.
+
 ### ١) قبل الكتابة
 - اقرأ `outputs/matalib/00_preliminary_chapter_REVIEW_AUTHENTIC_RESEARCHER_VOICE.md`
   لضبط الصوت والنبرة.
@@ -52,5 +57,6 @@ python tools/thesis.py ship  <الملفات> --open      # حُرّاس ← م�
 | `tools/build_rtl_clean_docx.py` | محرّك البناء الوحيد: RTL + أرقام عربية + تنظيف |
 | `guards/guard_check.py` | الحُرّاس السبعة على النصّ قبل اعتماده |
 | `guards/citation_court.py` | محكمة الإحالات وبناء الصفحة الحمراء |
+| `tools/snapshot.py` | بطاقة المشروع: كل شيء في صفحة واحدة بأقلّ التوكنز |
 | `tools/index_library.py` | فهرسة مكتبة المراجع وكشف الممسوح |
 | `tools/ocr_library.py` | خطّ OCR العربي للمراجع الممسوحة |

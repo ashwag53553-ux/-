@@ -3,3 +3,11 @@ state/last_build_report.json
 state/ocr_log.txt
 __pycache__/
 *.pyc
+
+# مواد ثقيلة لا تُرفع: المكتبة والمقاطع
+*.pdf
+*.mp4
+*.mp3
+*.wav
+*.m4a
+*.zip

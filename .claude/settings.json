@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python tools/snapshot.py --stdout"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python tools/snapshot.py >NUL 2>&1 || python3 tools/snapshot.py >/dev/null 2>&1"
+          }
+        ]
+      }
+    ]
+  }
+}
