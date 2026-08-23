@@ -11,6 +11,7 @@
   ح٣  عبارات آلية نمطية (بصمة الآلة)                 → صفر إلزاماً
   ح٤  تساوي أطوال الفقرات (رتابة إيقاعية)            → معامل اختلاف ≥ الحد
   ح٥  هوامش فيها إحالات إلى الحلقات/المقاطع          → صفر إلزاماً
+  ح٣ب إفراط الشرطة الطويلة (بصمة أسلوب آلي)          → رفض
   ح٦  اكتمال بيانات الإحالة (ص/طبعة/دار/سنة)         → تحذير مُحصى
   ح٧  المشكوك فيه خارج الصفحة الحمراء                → خطأ
 
@@ -155,9 +156,16 @@ def check_file(path: Path, cfg: dict) -> Report:
     rep.stats["machine_phrases"] = sum(c for _, c in found)
     for phrase, count in found:
         rep.err(f"ح٣ عبارة آلية نمطية ×{count}: «{phrase}»")
-    dashes = text.count("—")
-    if dashes > max(6, len(paragraphs_of(body)) // 2):
-        rep.warn(f"ح٣ إفراط في الشرطة الطويلة (—) ×{dashes} — أسلوب آلي محتمل")
+    words_total = max(1, len(text.split()))
+    dashes = text.count("—") + text.count("–")
+    rate = dashes / words_total * 1000
+    rep.stats["dashes"] = dashes
+    rep.stats["dash_rate_per_1000"] = round(rate, 2)
+    limit = gcfg.get("max_dashes_per_1000_words", 3.0)
+    if dashes > 5 and rate > limit:
+        rep.err(f"ح٣ب إفراط في الشرطة الطويلة: {dashes} شرطة "
+                f"({rate:.1f} لكل ألف كلمة، الحد {limit}) — بصمة آلة. "
+                f"بدّلها بعلامة عربية مناسبة للسياق.")
 
     # ── ح٤ رتابة أطوال الفقرات ──────────────────────────────
     paras = paragraphs_of(body)

@@ -21,6 +21,7 @@
   "guards": {
     "min_paragraph_length_cv": 0.30,
     "max_similar_consecutive_paragraphs": 2,
-    "similar_tolerance": 0.12
+    "similar_tolerance": 0.12,
+    "max_dashes_per_1000_words": 3.0
   }
 }
