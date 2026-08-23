@@ -357,6 +357,29 @@ def configure_document(doc, cfg):
     if sectPr.find(qn("w:rtlGutter")) is None:
         sectPr.append(OxmlElement("w:rtlGutter"))
 
+    # الافتراض الأصلي للمستند كله: كل فقرة RTL محاذاة يميناً — ومنها الفقرات
+    # التي ينشئها وورد نفسه (الخط الفاصل للحواشي وفاصل المتابعة).
+    styles_el = doc.styles.element
+    doc_defaults = styles_el.find(qn("w:docDefaults"))
+    if doc_defaults is None:
+        doc_defaults = OxmlElement("w:docDefaults")
+        styles_el.insert(0, doc_defaults)
+    ppr_default = doc_defaults.find(qn("w:pPrDefault"))
+    if ppr_default is None:
+        ppr_default = OxmlElement("w:pPrDefault")
+        doc_defaults.append(ppr_default)
+    ppr = ppr_default.find(qn("w:pPr"))
+    if ppr is None:
+        ppr = OxmlElement("w:pPr")
+        ppr_default.append(ppr)
+    if ppr.find(qn("w:bidi")) is None:
+        ppr.insert(0, OxmlElement("w:bidi"))
+    jc_def = ppr.find(qn("w:jc"))
+    if jc_def is None:
+        jc_def = OxmlElement("w:jc")
+        ppr.append(jc_def)
+    jc_def.set(qn("w:val"), "right")
+
     normal = doc.styles["Normal"]
     normal.font.name = cfg["font"]["arabic"]
     normal.font.size = Pt(cfg["font"]["size_pt"])
