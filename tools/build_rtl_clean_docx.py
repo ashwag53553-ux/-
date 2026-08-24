@@ -212,16 +212,21 @@ FOOTNOTES_RT = ("http://schemas.openxmlformats.org/officeDocument"
                 "/2006/relationships/footnotes")
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
+# محرف <w:separator/> رسمٌ ثابت يضعه وورد يسار الصفحة مهما ضُبط الاتجاه،
+# فاستُبدل بفقرة ذات حدّ سفليّ وإزاحة طرف — فيقع الخطّ في يمين الصفحة فعلاً.
+SEP_PPR = ('<w:pPr><w:bidi/><w:jc w:val="right"/>'
+           '<w:spacing w:after="0" w:line="240" w:lineRule="auto"/>'
+           '<w:ind w:end="6000"/>'
+           '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" '
+           'w:color="auto"/></w:pBdr></w:pPr>')
+
 FOOTNOTES_SKELETON = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:footnotes xmlns:w="{W_NS}">
   <w:footnote w:type="separator" w:id="-1">
-    <w:p><w:pPr><w:bidi/><w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
-      <w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:rtl/></w:rPr><w:separator/></w:r></w:p>
+    <w:p>{SEP_PPR}<w:r><w:rPr><w:rtl/></w:rPr></w:r></w:p>
   </w:footnote>
   <w:footnote w:type="continuationSeparator" w:id="0">
-    <w:p><w:pPr><w:bidi/><w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
-      <w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:rtl/></w:rPr>
-      <w:continuationSeparator/></w:r></w:p>
+    <w:p>{SEP_PPR}<w:r><w:rPr><w:rtl/></w:rPr></w:r></w:p>
   </w:footnote>
 </w:footnotes>"""
 

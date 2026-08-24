@@ -90,8 +90,17 @@ def verify(path: Path) -> list[str]:
                 errs.append(f"و٢ فقرة «{kind}» غير معرَّفة")
                 continue
             body = m.group(1)
+            if "<w:separator/>" in body or "<w:continuationSeparator/>" in body:
+                errs.append(f"و٢ فقرة «{kind}» تستعمل محرف الفاصل المدمج — "
+                            f"رسمٌ ثابت يقع يسار الصفحة مهما ضُبط الاتجاه. "
+                            f"استبدله بحدّ سفليّ مع إزاحة طرف")
+            if "<w:pBdr>" not in body or "w:bottom" not in body:
+                errs.append(f"و٢ فقرة «{kind}» بلا حدّ سفليّ — لا خطّ فاصل")
+            if not re.search(r'<w:ind[^>]*w:(end|right)="[1-9]', body):
+                errs.append(f"و٢ فقرة «{kind}» بلا إزاحة طرف — "
+                            f"الخطّ سيمتدّ من اليسار")
             if "<w:bidi/>" not in body:
-                errs.append(f"و٢ فقرة «{kind}» بلا bidi — الفاصل يبدأ يساراً")
+                errs.append(f"و٢ فقرة «{kind}» بلا bidi")
             if 'w:jc w:val="right"' not in body:
                 errs.append(f"و٢ فقرة «{kind}» بلا محاذاة يمين")
 
