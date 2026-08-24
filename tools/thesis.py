@@ -9,6 +9,7 @@
     python tools/thesis.py ship   <files>    حُرّاس ← محكمة ← بناء ← تقرير ← فتح
     python tools/thesis.py status            لوحة حالة الفصول والمكتبة والبنك
     python tools/thesis.py snapshot          بطاقة المشروع الكاملة في صفحة واحدة
+    python tools/thesis.py verify            فحص المستند المبنيّ من داخله
 """
 from __future__ import annotations
 
@@ -98,6 +99,8 @@ def main(argv=None):
         return run([ROOT / "tools/build_rtl_clean_docx.py", *rest])
     if cmd == "status":
         return cmd_status()
+    if cmd == "verify":
+        return run([ROOT / "guards/docx_verify.py", *rest])
     if cmd == "snapshot":
         return run([ROOT / "tools/snapshot.py", *rest])
     if cmd == "ship":
@@ -113,7 +116,12 @@ def main(argv=None):
                   *(["--open"] if "--open" in rest else [])])
         if rc != 0:
             return rc
-        print("\n[٤/٤] تقرير التحقّق …")
+        print("\n[٤/٥] حارس المستند المبنيّ …")
+        if run([ROOT / "guards/docx_verify.py"]) != 0:
+            print("\n✘ المستند المبنيّ مرفوض — أصلح الباني ثم أعد. "
+                  "لا تسلّم هذا الملف.")
+            return 1
+        print("\n[٥/٥] تقرير التحقّق …")
         run([ROOT / "tools/snapshot.py"])
         return cmd_status()
 

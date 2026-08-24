@@ -293,12 +293,14 @@ class FootnoteEngine:
         va.set(qn("w:val"), "superscript")
         rPr.append(va)
         ref = OxmlElement("w:footnoteReference")
-        ref.set(qn("w:customMarkFollows"), "1")
+        if self.cfg.get("footnote_numbering", "custom") == "custom":
+            ref.set(qn("w:customMarkFollows"), "1")
         ref.set(qn("w:id"), str(n))
         run._r.append(ref)
-        t = OxmlElement("w:t")
-        t.text = self.mark(n)
-        run._r.append(t)
+        if self.cfg.get("footnote_numbering", "custom") == "custom":
+            t = OxmlElement("w:t")
+            t.text = self.mark(n)
+            run._r.append(t)
         self.items.append((n, text))
         return n
 
@@ -317,7 +319,17 @@ class FootnoteEngine:
 
     def _footnote_xml(self, n: int, text: str) -> str:
         size = int((self.cfg["font"]["size_pt"] - 4) * 2)
-        runs = [self._run_xml(self.mark(n) + " ", size)]
+        auto = self.cfg.get("footnote_numbering", "custom") != "custom"
+        runs = []
+        if auto:
+            f = self.cfg["font"]["arabic"]
+            runs.append(f'<w:r><w:rPr><w:rStyle w:val="FootnoteReference"/>'
+                        f'<w:rFonts w:ascii="{f}" w:hAnsi="{f}" w:cs="{f}"/>'
+                        f'<w:vertAlign w:val="superscript"/><w:rtl/></w:rPr>'
+                        f'<w:footnoteRef/></w:r>')
+            runs.append(self._run_xml(" ", size))
+        else:
+            runs.append(self._run_xml(self.mark(n) + " ", size))
         for token in INLINE_RE.split(text):
             if not token:
                 continue
@@ -356,6 +368,18 @@ def configure_document(doc, cfg):
         sectPr.append(OxmlElement("w:bidi"))
     if sectPr.find(qn("w:rtlGutter")) is None:
         sectPr.append(OxmlElement("w:rtlGutter"))
+    if sectPr.find(qn("w:footnotePr")) is None:
+        sec_fp = OxmlElement("w:footnotePr")
+        s_pos = OxmlElement("w:pos")
+        s_pos.set(qn("w:val"), "pageBottom")
+        sec_fp.append(s_pos)
+        s_fmt = OxmlElement("w:numFmt")
+        s_fmt.set(qn("w:val"), cfg.get("footnote_num_fmt", "decimal"))
+        sec_fp.append(s_fmt)
+        s_rst = OxmlElement("w:numRestart")
+        s_rst.set(qn("w:val"), cfg.get("footnote_restart", "eachPage"))
+        sec_fp.append(s_rst)
+        sectPr.insert(0, sec_fp)
 
     # الافتراض الأصلي للمستند كله: كل فقرة RTL محاذاة يميناً — ومنها الفقرات
     # التي ينشئها وورد نفسه (الخط الفاصل للحواشي وفاصل المتابعة).
@@ -404,6 +428,30 @@ def configure_document(doc, cfg):
         settings.append(tfl)
     tfl.set(qn("w:bidi"), "ar-SA")
     tfl.set(qn("w:val"), "ar-SA")
+
+    # ── ربط الخط الفاصل: بغير هذا الربط يتجاهل وورد فاصلنا المضبوط
+    #    ويرسم فاصله المدمج (وهو يبدأ من اليسار دائماً).
+    old_fp = settings.find(qn("w:footnotePr"))
+    if old_fp is not None:
+        settings.remove(old_fp)
+    fp = OxmlElement("w:footnotePr")
+    pos = OxmlElement("w:pos")
+    pos.set(qn("w:val"), "pageBottom")
+    fp.append(pos)
+    numfmt = OxmlElement("w:numFmt")
+    numfmt.set(qn("w:val"), cfg.get("footnote_num_fmt", "decimal"))
+    fp.append(numfmt)
+    numstart = OxmlElement("w:numStart")
+    numstart.set(qn("w:val"), "1")
+    fp.append(numstart)
+    restart = OxmlElement("w:numRestart")
+    restart.set(qn("w:val"), cfg.get("footnote_restart", "eachPage"))
+    fp.append(restart)
+    for fid in ("-1", "0"):                      # ربط الفاصل وفاصل المتابعة
+        fn = OxmlElement("w:footnote")
+        fn.set(qn("w:id"), fid)
+        fp.append(fn)
+    settings.insert(0, fp)
 
 
 HEADING_SIZES = {"h1": 8, "h2": 5, "h3": 3, "h4": 2}   # زيادة على حجم المتن
@@ -553,6 +601,9 @@ def clean_package(doc, cfg):
 def load_config(path: Path) -> dict:
     cfg = json.loads(Path(path).read_text(encoding="utf-8-sig"))
     cfg.setdefault("font", {}).setdefault("arabic", "Traditional Arabic")
+    # تناقض ممنوع: العلامات المخصّصة يرقّمها المحرّك، فلا تُعاد كل صفحة
+    if cfg.get("footnote_numbering", "custom") == "custom":
+        cfg["footnote_restart"] = "continuous"
     cfg["font"].setdefault("size_pt", 16)
     return cfg
 
