@@ -38,7 +38,16 @@ LATIN_DIGIT_RE = re.compile(r"[0-9]")
 AR_DIGIT_RE = re.compile(r"[٠-٩]")
 
 
+def load_cfg() -> dict:
+    import json
+    c = ROOT / "thesis.config.json"
+    return json.loads(c.read_text(encoding="utf-8-sig")) if c.exists() else {}
+
+
 def verify(path: Path) -> list[str]:
+    cfg = load_cfg()
+    want_restart = cfg.get("footnote_restart", "continuous")
+    want_custom = cfg.get("footnote_numbering", "custom") == "custom"
     errs: list[str] = []
     z = zipfile.ZipFile(path)
     names = z.namelist()
@@ -65,9 +74,10 @@ def verify(path: Path) -> list[str]:
         # و٥ إعادة الترقيم
         m = re.search(r'<w:numRestart w:val="([^"]+)"', block)
         if not m:
-            errs.append("و٥ لا إعادة ترقيم للحواشي — أضف numRestart")
-        elif m.group(1) != "eachPage":
-            errs.append(f"و٥ إعادة الترقيم «{m.group(1)}» لا «eachPage»")
+            errs.append("و٥ لا إعداد لترقيم الحواشي — أضف numRestart")
+        elif m.group(1) != want_restart:
+            errs.append(f"و٥ ترقيم الحواشي في المستند «{m.group(1)}» "
+                        f"ولا يطابق الإعدادات «{want_restart}»")
 
     # و٢ فقرتا الفاصل
     if not footnotes:
@@ -111,7 +121,7 @@ def verify(path: Path) -> list[str]:
         errs.append(f"و٦ خلط في نمط الترقيم: {len(custom)} مخصّصة من {len(refs)}")
 
     # و٦ب تناقض: علامات مخصّصة مع طلب إعادة الترقيم كل صفحة
-    if custom and 'w:numRestart w:val="eachPage"' in settings:
+    if want_custom and 'w:numRestart w:val="eachPage"' in settings:
         errs.append("و٦ب تناقض: العلامات مخصّصة (يرقّمها المحرّك تسلسلياً) "
                     "بينما الإعداد يطلب إعادة الترقيم كل صفحة — "
                     "إمّا نمط تلقائي، وإمّا ترقيم متصل")
@@ -154,8 +164,12 @@ def main(argv=None):
     print("── حارس المستند المبنيّ ─────────────────────")
     print(f"  الملف : {path.name}")
     if not errs:
-        print("  ✔ اجتاز: الفاصل مربوط ويمينيّ، الترقيم يُعاد كل صفحة، "
-              "الأرقام عربية، لا رموز مخفية ولا آثار قوالب")
+        cfg = load_cfg()
+        mode = ("علامات مخصّصة بترقيم متصل"
+                if cfg.get("footnote_numbering", "custom") == "custom"
+                else f"ترقيم تلقائي ({cfg.get('footnote_restart')})")
+        print(f"  ✔ اجتاز: الفاصل مربوط ويمينيّ | {mode} | "
+              f"أرقام عربية | لا رموز مخفية ولا آثار قوالب")
         return 0
     for e in errs:
         print(f"   ✘ {e}")
